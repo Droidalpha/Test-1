@@ -26,7 +26,8 @@ import {
   Shield,
   Store,
   Compass,
-  Clipboard
+  Clipboard,
+  Download
 } from 'lucide-react';
 import { db } from './firebase';
 import { collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, getDocs, writeBatch } from 'firebase/firestore';
@@ -346,9 +347,9 @@ export default function App() {
             </div>
             <div>
               <h1 className="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight font-display flex items-center gap-1.5 leading-none">
-                Greenwood <span className="text-emerald-600 font-medium text-[10px] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100 uppercase">Farmstead</span>
+                ALPHAMART
               </h1>
-              <p className="text-[10px] text-slate-400 font-sans mt-0.5">Vibrant fresh groceries direct-from-soil</p>
+              <p className="text-[10px] text-slate-400 font-sans mt-0.5">Your one-stop daily essentials store</p>
             </div>
           </div>
 
@@ -400,23 +401,32 @@ export default function App() {
             </button>
           </div>
 
-          {/* Quick status counters / basket total */}
-          <div className="hidden lg:flex items-center gap-4 shrink-0">
-            {currentRole === 'customer' && !activeOrderId && (
-              <div className="bg-emerald-50 text-emerald-800 px-3 py-1.5 rounded-full border border-emerald-100 text-xs font-semibold flex items-center gap-1.5">
-                <ShoppingCart className="w-4 h-4" />
-                <span>Basket: ${cartTotal.toFixed(2)}</span>
+          {/* Action / Status area */}
+          <div className="flex items-center gap-4 shrink-0">
+            <button
+              onClick={() => alert('App download will start shortly!')}
+              className="bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm"
+            >
+              <Download className="w-4 h-4" />
+              <span className="hidden sm:inline">Download App</span>
+            </button>
+            <div className="hidden lg:flex items-center gap-4 shrink-0">
+              {currentRole === 'customer' && !activeOrderId && (
+                <div className="bg-emerald-50 text-emerald-800 px-3 py-1.5 rounded-full border border-emerald-100 text-xs font-semibold flex items-center gap-1.5">
+                  <ShoppingCart className="w-4 h-4" />
+                  <span>Basket: ${cartTotal.toFixed(2)}</span>
+                </div>
+              )}
+              {activeOrderId && (
+                <div className="bg-amber-50 text-amber-800 px-3 py-1.5 rounded-full border border-amber-100 text-xs font-semibold flex items-center gap-1.5 animate-pulse">
+                  <Truck className="w-4 h-4" />
+                  <span>Delivery Active</span>
+                </div>
+              )}
+              <div className="flex flex-col items-end text-right">
+                <span className="text-[9px] text-indigo-600 uppercase font-black tracking-wider">Connected Live</span>
+                <span className="text-[10px] text-slate-400 font-semibold">{orders.length} orders tracked</span>
               </div>
-            )}
-            {activeOrderId && (
-              <div className="bg-amber-50 text-amber-800 px-3 py-1.5 rounded-full border border-amber-100 text-xs font-semibold flex items-center gap-1.5 animate-pulse">
-                <Truck className="w-4 h-4" />
-                <span>Delivery Active</span>
-              </div>
-            )}
-            <div className="flex flex-col items-end text-right">
-              <span className="text-[9px] text-indigo-600 uppercase font-black tracking-wider">Connected Live</span>
-              <span className="text-[10px] text-slate-400 font-semibold">{orders.length} orders tracked</span>
             </div>
           </div>
 
