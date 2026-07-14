@@ -1,0 +1,6 @@
+{
+  "name": "Local Market Groceries",
+  "description": "A groceries app for a local market that lets users browse daily fresh produce, manage their cart, place orders, and track delivery status in real-time.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
