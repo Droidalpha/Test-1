@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ShoppingBag,
@@ -27,8 +27,26 @@ import {
   Store,
   Compass,
   Clipboard,
-  Download
+  Download,
+  Heart
 } from 'lucide-react';
+import { LineChart, Line, ResponsiveContainer } from 'recharts';
+
+const generatePriceHistory = (currentPrice: number, productId: string) => {
+  const history = [];
+  const days = ['6d ago', '5d ago', '4d ago', '3d ago', '2d ago', '1d ago', 'Today'];
+  const seed = productId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  
+  for (let i = 0; i < 7; i++) {
+    const randomPercent = ((seed + i * 13) % 13 - 6) / 100;
+    const price = Math.round(currentPrice * (1 + randomPercent) * 100) / 100;
+    history.push({
+      day: days[i],
+      price: i === 6 ? currentPrice : price
+    });
+  }
+  return history;
+};
 import { db } from './firebase';
 import { collection, doc, onSnapshot, addDoc, updateDoc, deleteDoc, getDocs, writeBatch } from 'firebase/firestore';
 import { Product, CartItem, Order, OrderStatus, DriverCoords } from './types';
@@ -185,6 +203,73 @@ export default function App() {
   };
 
   const cartTotal = cart.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
+  const totalItems = cart.reduce((acc, item) => acc + item.quantity, 0);
+
+  // Calculate average calories and protein for each category to determine "Healthy Choice"
+  const categoryNutritionAverages = useMemo(() => {
+    const totals: Record<string, { totalCalories: number; totalProtein: number; count: number }> = {};
+    
+    products.forEach((p) => {
+      if (p.calories !== undefined && p.protein !== undefined) {
+        if (!totals[p.category]) {
+          totals[p.category] = { totalCalories: 0, totalProtein: 0, count: 0 };
+        }
+        totals[p.category].totalCalories += p.calories;
+        totals[p.category].totalProtein += p.protein;
+        totals[p.category].count += 1;
+      }
+    });
+
+    const averages: Record<string, { avgCalories: number; avgProtein: number }> = {};
+    Object.entries(totals).forEach(([cat, data]) => {
+      if (data.count > 0) {
+        averages[cat] = {
+          avgCalories: data.totalCalories / data.count,
+          avgProtein: data.totalProtein / data.count,
+        };
+      }
+    });
+
+    let globalCalSum = 0;
+    let globalProtSum = 0;
+    let globalCount = 0;
+    products.forEach((p) => {
+      if (p.calories !== undefined && p.protein !== undefined) {
+        globalCalSum += p.calories;
+        globalProtSum += p.protein;
+        globalCount += 1;
+      }
+    });
+    
+    const globalAvgCal = globalCount > 0 ? globalCalSum / globalCount : 180;
+    const globalAvgProt = globalCount > 0 ? globalProtSum / globalCount : 6;
+
+    return {
+      averages,
+      globalAvg: { avgCalories: globalAvgCal, avgProtein: globalAvgProt }
+    };
+  }, [products]);
+
+  const checkIfHealthyChoice = (product: Product) => {
+    if (product.calories === undefined || product.protein === undefined) return false;
+    
+    const cat = product.category;
+    const catAvg = categoryNutritionAverages.averages[cat];
+    
+    const categoryFoodItemsCount = products.filter(p => p.category === cat && p.calories !== undefined).length;
+    const avgCal = (catAvg && categoryFoodItemsCount > 1) 
+      ? catAvg.avgCalories 
+      : categoryNutritionAverages.globalAvg.avgCalories;
+      
+    const avgProt = (catAvg && categoryFoodItemsCount > 1) 
+      ? catAvg.avgProtein 
+      : categoryNutritionAverages.globalAvg.avgProtein;
+
+    const isLowCalorie = product.calories <= avgCal;
+    const isHighProtein = product.protein >= avgProt || (product.protein / product.calories) > (avgProt / avgCal);
+    
+    return isLowCalorie && isHighProtein;
+  };
 
   // Place order as Customer
   const handlePlaceOrder = async (e: React.FormEvent) => {
@@ -331,7 +416,7 @@ export default function App() {
     }, 4500);
   };
 
-  const categories = ['All', 'Fruits', 'Vegetables', 'Greens', 'Dairy & Farm', 'Bakery', 'Herbs', 'Pantry'];
+  const categories = ['All', 'Groceries', 'Premium Fruits', 'Home & Kitchen', 'Fashion', 'Electronics', 'Beauty', 'Jewellery', 'Sports, Toys & Luggage'];
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans selection:bg-emerald-200">
@@ -412,10 +497,16 @@ export default function App() {
             </button>
             <div className="hidden lg:flex items-center gap-4 shrink-0">
               {currentRole === 'customer' && !activeOrderId && (
-                <div className="bg-emerald-50 text-emerald-800 px-3 py-1.5 rounded-full border border-emerald-100 text-xs font-semibold flex items-center gap-1.5">
+                <motion.div
+                  key={totalItems}
+                  initial={{ scale: 0.8 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 350, damping: 15 }}
+                  className="bg-emerald-50 text-emerald-800 px-3 py-1.5 rounded-full border border-emerald-100 text-xs font-semibold flex items-center gap-1.5"
+                >
                   <ShoppingCart className="w-4 h-4" />
-                  <span>Basket: ${cartTotal.toFixed(2)}</span>
-                </div>
+                  <span>Basket: ₹{cartTotal.toFixed(2)}</span>
+                </motion.div>
               )}
               {activeOrderId && (
                 <div className="bg-amber-50 text-amber-800 px-3 py-1.5 rounded-full border border-amber-100 text-xs font-semibold flex items-center gap-1.5 animate-pulse">
@@ -557,7 +648,7 @@ export default function App() {
                             {activeOrder.items.length} items from farmstead catalog
                           </div>
                           <div className="text-sm font-extrabold text-slate-950 mt-1 font-display">
-                            Total Paid: ${activeOrder.totalAmount.toFixed(2)}
+                            Total Paid: ₹{activeOrder.totalAmount.toFixed(2)}
                           </div>
                         </div>
                         
@@ -603,14 +694,14 @@ export default function App() {
 
                     <div className="relative z-10 max-w-lg">
                       <span className="px-2.5 py-1 bg-emerald-850 text-emerald-300 rounded-full text-[9px] font-bold tracking-wider uppercase font-mono border border-emerald-700">
-                        Today's Harvest: {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                        Mega Deals: {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
                       </span>
                       
                       <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight mt-3 font-display leading-tight">
-                        Organic produce harvested daily from local fields.
+                        Everything you need, delivered fresh to your door.
                       </h2>
                       <p className="text-xs text-emerald-200 mt-2 font-sans leading-relaxed">
-                        No chemical pesticides, straight to your dining table. Test our unique multi-role system by swapping perspectives!
+                        Groceries, electronics, fashion, and more. Test our unique multi-role system by swapping perspectives!
                       </p>
                     </div>
                   </div>
@@ -684,10 +775,16 @@ export default function App() {
                               exit={{ opacity: 0 }}
                               className="bg-white rounded-2xl border border-slate-100 hover:border-emerald-200 p-4 transition-all shadow-xs hover:shadow-md flex flex-col justify-between group relative"
                             >
-                              <div className="absolute top-6 left-6 z-10 flex flex-col gap-1">
+                              <div className="absolute top-6 left-6 z-10 flex flex-col gap-1 items-start">
                                 {product.organic && (
                                   <span className="px-2 py-0.5 bg-emerald-600 text-white text-[9px] font-extrabold rounded shadow-xs uppercase tracking-wide">
                                     Organic
+                                  </span>
+                                )}
+                                {checkIfHealthyChoice(product) && (
+                                  <span className="px-2 py-0.5 bg-rose-600 text-white text-[9px] font-extrabold rounded shadow-xs uppercase tracking-wide flex items-center gap-1">
+                                    <Heart className="w-2.5 h-2.5 fill-white text-white" />
+                                    Healthy Choice
                                   </span>
                                 )}
                                 <span className="px-2 py-0.5 bg-white/90 backdrop-blur-xs text-slate-700 text-[9px] font-bold rounded shadow-xs border border-slate-100">
@@ -729,9 +826,27 @@ export default function App() {
                                   <div>
                                     <span className="text-[9px] text-slate-400 block font-mono">Price</span>
                                     <span className="text-xs font-extrabold text-slate-900 font-display">
-                                      ${product.price.toFixed(2)}
+                                      ₹{product.price.toFixed(2)}
                                       <span className="text-slate-400 font-medium"> / {product.unit}</span>
                                     </span>
+                                  </div>
+
+                                  {/* Small Sparkline Historical Price Trend */}
+                                  <div className="flex flex-col items-center justify-center min-w-[64px]" title="7-day historical price trend">
+                                    <span className="text-[8px] text-slate-400 font-mono mb-0.5">7d Trend</span>
+                                    <div className="h-5 w-16 opacity-95">
+                                      <ResponsiveContainer width="100%" height="100%">
+                                        <LineChart data={generatePriceHistory(product.price, product.id)}>
+                                          <Line
+                                            type="monotone"
+                                            dataKey="price"
+                                            stroke="#10b981"
+                                            strokeWidth={1.5}
+                                            dot={false}
+                                          />
+                                        </LineChart>
+                                      </ResponsiveContainer>
+                                    </div>
                                   </div>
 
                                   <div className="flex items-center gap-1.5">
@@ -747,7 +862,9 @@ export default function App() {
                                       <Sparkles className="w-3.5 h-3.5" />
                                     </button>
 
-                                    <button
+                                    <motion.button
+                                      whileHover={{ scale: 1.05 }}
+                                      whileTap={{ scale: 0.93 }}
                                       disabled={product.stock === 0}
                                       onClick={() => addToCart(product)}
                                       className={`px-3 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1 cursor-pointer transition-colors ${
@@ -758,7 +875,7 @@ export default function App() {
                                     >
                                       <Plus className="w-3 h-3" />
                                       <span>Add ({product.stock})</span>
-                                    </button>
+                                    </motion.button>
                                   </div>
                                 </div>
                               </div>
@@ -854,7 +971,7 @@ export default function App() {
                             <div className="text-right flex sm:flex-col items-baseline sm:items-end justify-between sm:justify-start gap-2">
                               <span className="text-[9px] text-slate-400 font-sans block">Total Price Paid</span>
                               <span className="text-sm font-extrabold text-slate-900 font-display">
-                                ${order.totalAmount.toFixed(2)}
+                                ₹{order.totalAmount.toFixed(2)}
                               </span>
                             </div>
                           </div>
@@ -881,7 +998,7 @@ export default function App() {
                                       {item.product.name}
                                     </h5>
                                     <p className="text-[9px] text-slate-400 mt-0.5">
-                                      {item.quantity} {item.product.unit} × ${item.product.price.toFixed(2)}
+                                      {item.quantity} {item.product.unit} × ₹{item.product.price.toFixed(2)}
                                     </p>
                                   </div>
                                 </div>
@@ -926,9 +1043,15 @@ export default function App() {
                       <ShoppingCart className="w-4 h-4 text-emerald-600" />
                       <h3 className="text-sm font-bold text-slate-900 font-display">Shopping Basket</h3>
                     </div>
-                    <span className="text-xs bg-slate-100 px-2 py-0.5 rounded-full text-slate-500 font-mono font-bold">
-                      {cart.reduce((s,i)=>s+i.quantity,0)} items
-                    </span>
+                    <motion.span
+                      key={totalItems}
+                      initial={{ scale: 0.8 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", stiffness: 350, damping: 15 }}
+                      className="text-xs bg-slate-100 px-2 py-0.5 rounded-full text-slate-500 font-mono font-bold"
+                    >
+                      {totalItems} items
+                    </motion.span>
                   </div>
 
                   {checkoutStep === 'shopping' ? (
@@ -954,7 +1077,7 @@ export default function App() {
                                 <div className="flex-1 min-w-0">
                                   <h4 className="text-[11px] font-bold text-slate-900 font-display truncate">{item.product.name}</h4>
                                   <p className="text-[10px] text-emerald-700 font-bold font-mono mt-0.5">
-                                    ${item.product.price.toFixed(2)}<span className="text-slate-400 font-medium font-sans">/{item.product.unit}</span>
+                                    ₹{item.product.price.toFixed(2)}<span className="text-slate-400 font-medium font-sans">/{item.product.unit}</span>
                                   </p>
                                 </div>
 
@@ -980,7 +1103,7 @@ export default function App() {
                           <div className="space-y-2 pt-3 border-t border-slate-100">
                             <div className="flex justify-between text-xs font-semibold text-slate-600">
                               <span>Subtotal</span>
-                              <span className="font-mono">${cartTotal.toFixed(2)}</span>
+                              <span className="font-mono">₹{cartTotal.toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between text-xs font-semibold text-slate-600">
                               <span>Delivery Fee</span>
@@ -988,7 +1111,7 @@ export default function App() {
                             </div>
                             <div className="flex justify-between text-sm font-bold text-slate-900 pt-2 border-t border-dashed border-slate-150 font-display">
                               <span>Total Basket</span>
-                              <span className="text-emerald-700 font-mono font-extrabold text-base">${cartTotal.toFixed(2)}</span>
+                              <span className="text-emerald-700 font-mono font-extrabold text-base">₹{cartTotal.toFixed(2)}</span>
                             </div>
 
                             <button
@@ -1012,7 +1135,7 @@ export default function App() {
                         >
                           ← Basket
                         </button>
-                        <span className="font-bold text-emerald-700">Total: ${cartTotal.toFixed(2)}</span>
+                        <span className="font-bold text-emerald-700">Total: ₹{cartTotal.toFixed(2)}</span>
                       </div>
 
                       <div className="space-y-3">

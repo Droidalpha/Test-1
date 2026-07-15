@@ -10,6 +10,9 @@ export interface Product {
   freshness: string;
   organic: boolean;
   rating: number;
+  calories?: number;
+  protein?: number;
+  healthDetails?: string;
 }
 
 export interface CartItem {

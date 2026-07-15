@@ -176,7 +176,7 @@ export default function OwnerView({ products, orders, onAdjustStock }: OwnerView
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-sans">Stock Valuation</span>
             <DollarSign className="w-4 h-4 text-amber-500" />
           </div>
-          <div className="text-xl font-black text-slate-950 mt-2 font-display">${totalValue.toFixed(2)}</div>
+          <div className="text-xl font-black text-slate-950 mt-2 font-display">₹{totalValue.toFixed(2)}</div>
           <p className="text-[9px] text-slate-400 mt-1">Based on current pricing</p>
         </div>
 
@@ -256,7 +256,7 @@ export default function OwnerView({ products, orders, onAdjustStock }: OwnerView
                       <td className="py-3.5 px-4 text-right">
                         {isEditingPrice ? (
                           <div className="flex items-center justify-end gap-1">
-                            <span className="text-slate-400">$</span>
+                            <span className="text-slate-400">₹</span>
                             <input
                               type="number"
                               step="0.01"
@@ -280,7 +280,7 @@ export default function OwnerView({ products, orders, onAdjustStock }: OwnerView
                           </div>
                         ) : (
                           <div className="group/price flex items-center justify-end gap-1.5">
-                            <span className="font-mono font-extrabold text-slate-900">${p.price.toFixed(2)}</span>
+                            <span className="font-mono font-extrabold text-slate-900">₹{p.price.toFixed(2)}</span>
                             <span className="text-slate-400">/ {p.unit}</span>
                             <button
                               onClick={() => {
@@ -399,7 +399,7 @@ export default function OwnerView({ products, orders, onAdjustStock }: OwnerView
                 </div>
                 <div className="mt-3 pt-2 border-t border-slate-200/50 flex justify-between items-center text-[11px] font-bold">
                   <span className="text-slate-400">Total Revenue:</span>
-                  <span className="font-mono text-slate-950">${o.totalAmount.toFixed(2)}</span>
+                  <span className="font-mono text-slate-950">₹{o.totalAmount.toFixed(2)}</span>
                 </div>
               </div>
             ))}
@@ -474,7 +474,7 @@ export default function OwnerView({ products, orders, onAdjustStock }: OwnerView
 
                   {/* Price */}
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Price per Unit ($) *</label>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Price per Unit (₹) *</label>
                     <input
                       type="number"
                       step="0.01"

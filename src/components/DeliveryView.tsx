@@ -70,7 +70,7 @@ export default function DeliveryView({ orders }: DeliveryViewProps) {
   // Update localStorage stats when changed
   const recordSuccessfulDelivery = () => {
     const newCount = completedCount + 1;
-    // Generate a random tip between $2.50 and $6.00
+    // Generate a random tip between ₹2.50 and ₹6.00
     const tip = parseFloat((2.50 + Math.random() * 3.50).toFixed(2));
     const baseFee = 5.00;
     const addedValue = baseFee + tip;
@@ -83,7 +83,7 @@ export default function DeliveryView({ orders }: DeliveryViewProps) {
     localStorage.setItem('rider_earnings', newEarnings.toString());
 
     // Dispatch a subtle customized local event or audio effect if needed
-    alert(`🎉 Delivery completed! Earned $${baseFee.toFixed(2)} base delivery pay + $${tip.toFixed(2)} fresh-tip from the customer!`);
+    alert(`🎉 Delivery completed! Earned ₹${baseFee.toFixed(2)} base delivery pay + ₹${tip.toFixed(2)} fresh-tip from the customer!`);
   };
 
   const handleUpdateStatus = async (orderId: string, status: OrderStatus) => {
@@ -288,7 +288,7 @@ export default function DeliveryView({ orders }: DeliveryViewProps) {
                     </div>
 
                     <div className="mt-3 pt-2 border-t border-slate-200/40 flex justify-between items-center text-[10px]">
-                      <span className="text-slate-400">{o.items.length} items • ${o.totalAmount.toFixed(2)}</span>
+                      <span className="text-slate-400">{o.items.length} items • ₹{o.totalAmount.toFixed(2)}</span>
                       <span className="text-emerald-700 font-bold">Select and Handle →</span>
                     </div>
                   </div>
